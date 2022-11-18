@@ -1,0 +1,43 @@
+---
+title: "Untitled"
+author: "MFK"
+date: '2022-11-15'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(ggplot2,dplyr,tidyr,hrbrthemes)
+```
+
+
+## Including Plots
+
+
+```{r}
+df <- vroom::vroom("~/Downloads/LeedsGeneral_wth_RESULTS_12month2021.csv") %>% janitor::clean_names()
+df
+
+```
+
+```{r}
+df %>% 
+  select(-contaminant,-ambient,-zone_number_2,-zone_number_3,-zone_number_6,-zone_number_7,-zone_number_9:-zone_number_12) %>% 
+  pivot_longer(!date_time) %>% 
+  mutate(date_time=lubridate::dmy_hm(date_time)) %>% 
+  ggplot()+
+  geom_point(aes(x=date_time,y=value),alpha=0.4,size=0.05,shape=4)+
+  facet_wrap(~name,ncol=1,nrow=4)+
+  hrbrthemes::theme_ipsum(axis_text_size = 14,axis_title_size = 14)+
+  # scale_colour_brewer(palette = "Set1")+
+  xlab("")+
+  ylab("CO2 (ppm)")+
+  theme(legend.position = " ",axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) ->a
+```
+
+
+```{r}
+
+plotly::ggplotly(a)
+```
+
