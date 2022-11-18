@@ -1,0 +1,93 @@
+---
+title: "Untitled"
+author: "MFK"
+date: '2022-11-15'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(ggplot2,dplyr,tidyr,hrbrthemes)
+```
+
+
+## Import data: CONTAM and Weather
+
+
+```{r}
+df <- vroom::vroom("../data/LeedsGeneral_wth_RESULTS_12month2021.csv") %>% janitor::clean_names()
+names_wt <- vroom::vroom("../data/GBR_ENG_Leeds.Wea.Ctr.033470_TMYx.wth",skip = 370,n_max = 1)%>% janitor::clean_names() # bring in the header names
+wt <- read.table("../data/GBR_ENG_Leeds.Wea.Ctr.033470_TMYx.wth",skip = 371)%>% janitor::clean_names() # This doesn't like the headers
+names(wt) <- names(names_wt) #reassign headers
+```
+
+```{r clean df file, echo=FALSE}
+df <- df %>% 
+  select(-contaminant) %>% 
+  mutate(date_time=lubridate::dmy_hm(date_time))  
+df
+
+
+```
+```{r clean weather file, echo=FALSE}
+wt <- wt %>% 
+  mutate(date= lubridate::mdy(paste0(date,"/","2022"))) %>% 
+  mutate(date_time=lubridate::ymd_hms(paste(date,time)),.keep="unused") %>% 
+  select(date_time,ta_k:sn)
+  
+wt
+
+```
+```{r join wt and df}
+joined_data <- df %>% 
+  left_join(wt,by = "date_time")
+```
+
+## Plots
+
+```{r}
+data <- df %>% 
+  select(date_time,zone_number_1,zone_number_4,zone_number_5,zone_number_8) %>% 
+  pivot_longer(!date_time) %>% 
+  mutate(bold=case_when(value>800~"Yes",
+                        TRUE~"No"))
+  ggplot()+
+  geom_point(data=data %>% filter(bold=="Yes"),aes(x=date_time,y=value),size=0.05,shape=4)+
+  geom_point(data=data %>% filter(bold=="No"),aes(x=date_time,y=value),alpha=0.1,size=0.05,shape=4)+
+  facet_wrap(~name,ncol=1,nrow=4)+
+  hrbrthemes::theme_ipsum(axis_text_size = 14,axis_title_size = 14)+
+  # scale_colour_brewer(palette = "Set1")+
+  xlab("")+
+  ylab("CO2 (ppm)")+
+  theme(legend.position = " ",axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) ->a
+```
+
+
+```{r joined data}
+
+plotly::ggplotly(a)
+
+```
+
+```{r}
+
+joined_data <- joined_data %>% 
+  mutate(ta_c=ta_k-270)
+
+ggplot()+
+  geom_point(data=joined_data ,aes(x=date_time,y=zone_number_2,colour=ta_c),size=0.05,shape=4)+
+  # facet_wrap(~name,ncol=1,nrow=4)+
+  hrbrthemes::theme_ipsum(axis_text_size = 14,axis_title_size = 14)+
+  scale_colour_gradient2( low = "#132B43",
+  high = "#f2493a",
+  mid = "white",
+  midpoint = 10,
+  space = "Lab",
+  na.value = "grey50",
+  guide = "colourbar",
+  aesthetics = "fill")+#scale_colour_brewer(palette = "RdBu",type = "diverging")+
+  xlab("")+
+  ylab("CO2 (ppm)")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
+```
+
