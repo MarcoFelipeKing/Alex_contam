@@ -25,19 +25,13 @@ names(wt) <- names(names_wt) #reassign headers
 df <- df %>% 
   select(-contaminant) %>% 
   mutate(date_time=lubridate::dmy_hm(date_time))  
-df
-
-
-```
-```{r clean weather file, echo=FALSE}
 wt <- wt %>% 
   mutate(date= lubridate::mdy(paste0(date,"/","2022"))) %>% 
   mutate(date_time=lubridate::ymd_hms(paste(date,time)),.keep="unused") %>% 
   select(date_time,ta_k:sn)
-  
-wt
 
 ```
+
 ```{r join wt and df}
 joined_data <- df %>% 
   left_join(wt,by = "date_time")%>% 
@@ -70,7 +64,7 @@ plotly::ggplotly(a)
 
 ```
 
-```{r}
+```{r single zone example}
 
 
 ggplot()+
@@ -83,11 +77,26 @@ ggplot()+
   theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))
 ```
 
+```{r}
+
+ggplot()+
+  geom_point(data=joined_data %>% select(date_time,starts_with("zone")) %>% 
+               rename("Zone 1"="zone_number_1","Zone 5"="zone_number_4","Zone 2"="zone_number_5","Zone 10"="zone_number_10") %>%
+               pivot_longer(!date_time),aes(x=date_time,y=value,colour=name),size=0.05,shape=4,alpha=0.2)+
+  # facet_wrap(~name,ncol=1,nrow=4)+
+  hrbrthemes::theme_ipsum(axis_text_size = 14,axis_title_size = 14)+
+  # scale_colour_distiller(palette = "Spectral","External \nTemperature C")+#scale_colour_brewer(palette = "RdBu",type = "diverging")+
+  xlab("")+
+  ylab("CO2 (ppm)")+
+  theme(axis.text.x = element_text( vjust = 0.5, hjust=1)) #angle = 45,
+
+```
+
 ```{r multiple zones}
 
 data <- joined_data %>% 
-  select(date_time,zone_number_1,zone_number_4,zone_number_5,zone_number_8,ta_c) %>% 
-  rename("Zone 1"="zone_number_1","Zone 5"="zone_number_4","Zone 2"="zone_number_5","Zone 6C"="zone_number_8") %>% 
+  select(date_time,zone_number_1,zone_number_4,zone_number_5,zone_number_10,ta_c) %>% 
+  rename("Zone 1"="zone_number_1","Zone 5"="zone_number_4","Zone 2"="zone_number_5","Zone 10"="zone_number_10") %>% #,"Zone 6C"="zone_number_8"
   pivot_longer(!c(date_time,ta_c)) %>% 
   mutate(bold=case_when(value>800~"Yes",
                         TRUE~"No"))
@@ -100,6 +109,36 @@ ggplot()+
   scale_colour_distiller(palette = "Spectral","External \nTemperature C")+
   xlab("")+
   ylab("CO2 (ppm)")+
-  theme(legend.position = " ",axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) ->b
+  theme(legend.position = "top",axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) ->b
+b
+```
+
+
+## Ridge plot
+
+```{r}
+# library
+library(ggridges)
+library(ggplot2)
+library(viridis)
+library(hrbrthemes)
+
+data <- data %>% 
+  mutate(month=months(date_time)) %>% 
+  mutate(month=factor(month, levels = month.name))
+# Plot
+ggplot(data, aes(x = value, y = month, fill = ta_c)) + #..x..
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) +
+  scale_fill_viridis(name = "Temp. [C]", option = "C") +
+  facet_wrap(~name)+
+  labs(title = 'CO2 levels (ppm)') +
+  theme_ipsum() +
+    theme(
+      legend.position="none",
+      panel.spacing = unit(0.1, "lines"),
+      strip.text.x = element_text(size = 8)
+    )
+
+
 ```
 
